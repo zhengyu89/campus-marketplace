@@ -7,6 +7,9 @@
             "email": "148403225+zhengyu89@users.noreply.github.com"
         }
     ],
+    "config": {
+        "process-timeout": 0
+    },
     "require": {
         "slim/slim": "^4.15",
         "slim/psr7": "^1.8",
@@ -17,7 +20,10 @@
         "serve": [
             "@php -r \"echo 'Health check: http://localhost:8080/api/health' . PHP_EOL;\"",
             "@php -S localhost:8080 -t public"
-        ]
+        ],
+        "db:schema": "@php scripts/import_database.php schema",
+        "db:seed": "@php scripts/import_database.php seed",
+        "db:setup": "@php scripts/import_database.php all"
     },
     "autoload": {
         "psr-4": {

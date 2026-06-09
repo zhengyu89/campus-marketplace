@@ -1,7 +1,7 @@
 CREATE DATABASE IF NOT EXISTS campus_marketplace;
 USE campus_marketplace;
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
@@ -10,13 +10,13 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     category_id INT AUTO_INCREMENT PRIMARY KEY,
     category_name VARCHAR(100) NOT NULL UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE listings (
+CREATE TABLE IF NOT EXISTS listings (
     listing_id INT AUTO_INCREMENT PRIMARY KEY,
     seller_id INT NOT NULL,
     category_id INT NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE listings (
         FOREIGN KEY (category_id) REFERENCES categories(category_id)
 );
 
-CREATE TABLE offers (
+CREATE TABLE IF NOT EXISTS offers (
     offer_id INT AUTO_INCREMENT PRIMARY KEY,
     listing_id INT NOT NULL,
     buyer_id INT NOT NULL,
