@@ -115,6 +115,21 @@ The seed file also creates 10 registered user accounts:
 
 Protected requests use `Authorization: Bearer <token>`.
 
+## Category/Admin API
+
+Category reads are public, while write operations require an admin JWT token.
+
+- `GET /api/categories`
+- `POST /api/categories`
+- `PUT /api/categories/{id}`
+- `DELETE /api/categories/{id}`
+
+The admin category management page is available at:
+
+`http://localhost:5173/admin/categories`
+
+Additional Postman/API testing notes are in `docs/category_admin_test.md`.
+
 ## Manual Test Steps
 
 1. Run `composer db:setup`.
@@ -123,7 +138,7 @@ Protected requests use `Authorization: Bearer <token>`.
 4. Open `http://localhost:5173`.
 5. Log in with `registereduser1@gmail.com` / `User123!` and confirm the account page shows the `user` role.
 6. Log out and confirm `/account` redirects back to `/login`.
-7. Log in with `admin@campus.local` / `Admin123!` and confirm the account page shows the `admin` role.
+7. Log in with `admin@gmail.com` / `Admin123!` and confirm the account page shows the `admin` role.
 8. Register a new user and confirm you are redirected to the login page.
 9. Log in with the new user and confirm you land on `/account`.
 

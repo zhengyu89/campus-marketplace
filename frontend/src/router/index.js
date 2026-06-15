@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import pinia from '../stores/pinia'
 import { useAuthStore } from '../stores/auth'
 import AccountView from '../views/AccountView.vue'
+import AdminCategoriesView from '../views/AdminCategoriesView.vue'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import MarketResultsView from '../views/MarketResultsView.vue'
@@ -65,6 +66,15 @@ const router = createRouter({
       meta: {
         requiresAuth: true,
         roles: ['user', 'admin'],
+      },
+    },
+    {
+      path: '/admin/categories',
+      name: 'admin-categories',
+      component: AdminCategoriesView,
+      meta: {
+        requiresAuth: true,
+        roles: ['admin'],
       },
     },
   ],

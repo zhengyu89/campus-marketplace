@@ -7,8 +7,12 @@ use App\Core\Application\Responder\JsonResponder;
 use App\Modules\Auth\Application\AuthService;
 use App\Modules\Auth\Application\JwtService;
 use App\Modules\Auth\Application\Middleware\JwtAuthenticationMiddleware;
+use App\Modules\Auth\Application\Middleware\RequireRoleMiddleware;
 use App\Modules\Auth\Infrastructure\UserRepository;
 use App\Modules\Auth\Presentation\AuthController;
+use App\Modules\Category\Application\CategoryService;
+use App\Modules\Category\Infrastructure\CategoryRepository;
+use App\Modules\Category\Presentation\CategoryController;
 use Slim\App;
 
 return function (App $app): void {
@@ -33,6 +37,32 @@ return function (App $app): void {
         ];
 
         return $dependencies;
+    };
+
+    $resolveCategoryDependencies = static function (): array {
+        static $dependencies = null;
+
+        if ($dependencies !== null) {
+            return $dependencies;
+        }
+
+        $pdo = DatabaseFactory::create();
+        $categoryRepository = new CategoryRepository($pdo);
+        $categoryService = new CategoryService($categoryRepository);
+
+        $dependencies = [
+            'categoryController' => new CategoryController($categoryService),
+        ];
+
+        return $dependencies;
+    };
+
+    $protectAdminRoute = static function ($route) use ($resolveAuthDependencies) {
+        return $route
+            ->add(new RequireRoleMiddleware(['admin']))
+            ->add(function ($request, $handler) use ($resolveAuthDependencies) {
+                return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
+            });
     };
 
     $app->get('/api/health', function ($request, $response) {
@@ -65,4 +95,20 @@ return function (App $app): void {
             ],
         ]);
     });
+
+    $app->get('/api/categories', function ($request, $response) use ($resolveCategoryDependencies) {
+        return $resolveCategoryDependencies()['categoryController']->index($request, $response);
+    });
+
+    $protectAdminRoute($app->post('/api/categories', function ($request, $response) use ($resolveCategoryDependencies) {
+        return $resolveCategoryDependencies()['categoryController']->store($request, $response);
+    }));
+
+    $protectAdminRoute($app->put('/api/categories/{id}', function ($request, $response, $args) use ($resolveCategoryDependencies) {
+        return $resolveCategoryDependencies()['categoryController']->update($request, $response, $args);
+    }));
+
+    $protectAdminRoute($app->delete('/api/categories/{id}', function ($request, $response, $args) use ($resolveCategoryDependencies) {
+        return $resolveCategoryDependencies()['categoryController']->delete($request, $response, $args);
+    }));
 };

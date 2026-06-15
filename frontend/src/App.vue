@@ -7,6 +7,7 @@ const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 const isAuthenticated = computed(() => authStore.isAuthenticated)
+const isAdmin = computed(() => authStore.user?.role === 'admin')
 const primaryActionRoute = computed(() => (isAuthenticated.value ? { name: 'account' } : { name: 'register' }))
 const searchQuery = ref('')
 
@@ -88,6 +89,9 @@ async function handleSearch() {
           <RouterLink class="app-link" :to="{ name: 'home', hash: '#why-markethub' }">
             Why UTM MarketHub
           </RouterLink>
+          <RouterLink v-if="isAdmin" class="app-link" :to="{ name: 'admin-categories' }">
+            Admin Categories
+          </RouterLink>
         </div>
 
         <div class="d-flex flex-wrap align-items-center gap-2 ms-md-auto">
@@ -97,6 +101,13 @@ async function handleSearch() {
             </span>
             <RouterLink class="btn btn-outline-light app-outline-button btn-sm" :to="{ name: 'account' }">
               Account
+            </RouterLink>
+            <RouterLink
+              v-if="isAdmin"
+              class="btn btn-outline-light app-outline-button btn-sm"
+              :to="{ name: 'admin-categories' }"
+            >
+              Categories
             </RouterLink>
             <button class="btn app-primary-button btn-sm" type="button" @click="handleLogout">
               Logout
