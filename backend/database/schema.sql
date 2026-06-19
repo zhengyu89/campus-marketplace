@@ -48,5 +48,8 @@ CREATE TABLE IF NOT EXISTS offers (
         FOREIGN KEY (listing_id) REFERENCES listings(listing_id),
 
     CONSTRAINT fk_offers_buyer
-        FOREIGN KEY (buyer_id) REFERENCES users(user_id)
+        FOREIGN KEY (buyer_id) REFERENCES users(user_id),
+
+    CONSTRAINT uq_offers_listing_buyer
+        UNIQUE (listing_id, buyer_id)
 );

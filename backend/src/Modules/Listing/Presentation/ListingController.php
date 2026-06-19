@@ -14,7 +14,7 @@ use Throwable;
 
 final class ListingController
 {
-    public function __construct(private readonly ListingService $listingService)
+    public function __construct(private ListingService $listingService)
     {
     }
 

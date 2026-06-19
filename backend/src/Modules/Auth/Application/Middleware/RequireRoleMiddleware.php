@@ -12,7 +12,7 @@ use Slim\Psr7\Response;
 
 final class RequireRoleMiddleware
 {
-    public function __construct(private readonly array $allowedRoles)
+    public function __construct(private array $allowedRoles)
     {
     }
 

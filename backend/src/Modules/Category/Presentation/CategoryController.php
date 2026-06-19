@@ -13,7 +13,7 @@ use Throwable;
 
 final class CategoryController
 {
-    public function __construct(private readonly CategoryService $categoryService)
+    public function __construct(private CategoryService $categoryService)
     {
     }
 

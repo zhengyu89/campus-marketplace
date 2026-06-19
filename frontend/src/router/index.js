@@ -9,6 +9,7 @@ import ListingDetailView from '../views/ListingDetailView.vue'
 import ListingEditorView from '../views/ListingEditorView.vue'
 import MarketResultsView from '../views/MarketResultsView.vue'
 import MyListingsView from '../views/MyListingsView.vue'
+import OffersView from '../views/OffersView.vue'
 import RegisterView from '../views/RegisterView.vue'
 
 const router = createRouter({
@@ -94,6 +95,15 @@ const router = createRouter({
       path: '/my-listings',
       name: 'my-listings',
       component: MyListingsView,
+      meta: {
+        requiresAuth: true,
+        roles: ['user', 'admin'],
+      },
+    },
+    {
+      path: '/offers',
+      name: 'offers',
+      component: OffersView,
       meta: {
         requiresAuth: true,
         roles: ['user', 'admin'],

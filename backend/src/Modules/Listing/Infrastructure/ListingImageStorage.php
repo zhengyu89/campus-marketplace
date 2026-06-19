@@ -17,7 +17,7 @@ final class ListingImageStorage
         'image/webp' => 'webp',
     ];
 
-    private readonly string $uploadDirectory;
+    private string $uploadDirectory;
 
     public function __construct(?string $uploadDirectory = null)
     {

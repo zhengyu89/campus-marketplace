@@ -13,7 +13,7 @@ use Throwable;
 
 final class AuthController
 {
-    public function __construct(private readonly AuthService $authService)
+    public function __construct(private AuthService $authService)
     {
     }
 

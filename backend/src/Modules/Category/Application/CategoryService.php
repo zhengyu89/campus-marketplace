@@ -9,7 +9,7 @@ use App\Modules\Category\Infrastructure\CategoryRepository;
 
 final class CategoryService
 {
-    public function __construct(private readonly CategoryRepository $categoryRepository)
+    public function __construct(private CategoryRepository $categoryRepository)
     {
     }
 

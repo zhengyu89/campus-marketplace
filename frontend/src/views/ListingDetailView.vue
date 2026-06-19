@@ -1,20 +1,47 @@
 <script setup>
-import { computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ListingImage from '../components/ListingImage.vue'
 import ListingStatusBadge from '../components/ListingStatusBadge.vue'
 import { useAuthStore } from '../stores/auth'
 import { useListingsStore } from '../stores/listings'
+import { useOffersStore } from '../stores/offers'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const listingsStore = useListingsStore()
+const offersStore = useOffersStore()
+const offerForm = reactive({
+  offer_price: '',
+  message: '',
+})
+const offerError = ref('')
+const offerSuccess = ref('')
+const isSubmittingOffer = ref(false)
+const isEditingOffer = ref(false)
 
 const listing = computed(() => listingsStore.currentListing)
+const existingOffer = computed(() =>
+  offersStore.sentOffers.find(
+    (offer) => Number(offer.listing_id) === Number(listing.value?.listing_id)
+  )
+)
 const isOwner = computed(
   () =>
     authStore.isAuthenticated &&
     Number(authStore.user?.user_id) === Number(listing.value?.seller_id)
+)
+const canOffer = computed(
+  () =>
+    authStore.isAuthenticated &&
+    !isOwner.value &&
+    !existingOffer.value &&
+    listing.value?.listing_status === 'Available'
+)
+const canEditExistingOffer = computed(() => existingOffer.value?.offer_status === 'Pending')
+const canDeleteExistingOffer = computed(() =>
+  existingOffer.value && existingOffer.value.offer_status !== 'Accepted'
 )
 
 const formatPrice = (price) =>
@@ -31,9 +58,115 @@ const formatDate = (value) =>
 async function loadListing() {
   try {
     await listingsStore.fetchListing(route.params.id)
+    if (authStore.isAuthenticated) {
+      await offersStore.fetchSentOffers()
+    }
+    resetOfferForm()
+    offerError.value = ''
+    offerSuccess.value = ''
+    isEditingOffer.value = false
   } catch {
     // The store exposes the request error to the page.
   }
+}
+
+function resetOfferForm() {
+  if (existingOffer.value) {
+    offerForm.offer_price = String(existingOffer.value.offer_price)
+    offerForm.message = existingOffer.value.message ?? ''
+    return
+  }
+
+  offerForm.offer_price = listing.value?.price ? String(listing.value.price) : ''
+  offerForm.message = ''
+}
+
+async function submitOffer() {
+  if (!listing.value) {
+    return
+  }
+
+  offerError.value = ''
+  offerSuccess.value = ''
+  isSubmittingOffer.value = true
+
+  try {
+    if (existingOffer.value) {
+      await offersStore.updateOffer(existingOffer.value.offer_id, {
+        offer_price: offerForm.offer_price,
+        message: offerForm.message,
+      })
+      offerSuccess.value = 'Offer updated.'
+      isEditingOffer.value = false
+    } else {
+      await offersStore.createOffer(listing.value.listing_id, {
+        offer_price: offerForm.offer_price,
+        message: offerForm.message,
+      })
+      offerSuccess.value = 'Offer sent. You can track it from your Offers page.'
+    }
+
+    resetOfferForm()
+  } catch (error) {
+    const errors = error.response?.data?.errors ?? {}
+    offerError.value =
+      errors.offer_price ??
+      errors.message ??
+      error.response?.data?.message ??
+      (existingOffer.value ? 'Unable to update this offer.' : 'Unable to send this offer.')
+  } finally {
+    isSubmittingOffer.value = false
+  }
+}
+
+async function deleteOffer() {
+  if (!existingOffer.value) {
+    return
+  }
+
+  const confirmed = window.confirm('Delete your offer for this listing?')
+
+  if (!confirmed) {
+    return
+  }
+
+  offerError.value = ''
+  offerSuccess.value = ''
+  isSubmittingOffer.value = true
+
+  try {
+    await offersStore.deleteOffer(existingOffer.value.offer_id)
+    offerSuccess.value = 'Offer deleted.'
+    isEditingOffer.value = false
+    resetOfferForm()
+  } catch (error) {
+    const message = error.response?.data?.message
+    offerError.value = message ?? 'Unable to delete this offer.'
+  } finally {
+    isSubmittingOffer.value = false
+  }
+}
+
+function startEditingOffer() {
+  resetOfferForm()
+  offerError.value = ''
+  offerSuccess.value = ''
+  isEditingOffer.value = true
+}
+
+function cancelEditingOffer() {
+  resetOfferForm()
+  offerError.value = ''
+  isEditingOffer.value = false
+}
+
+function goToLogin() {
+  router.push({
+    name: 'login',
+    query: {
+      redirect: route.fullPath,
+    },
+  })
 }
 
 watch(() => route.params.id, loadListing, { immediate: true })
@@ -108,12 +241,123 @@ watch(() => route.params.id, loadListing, { immediate: true })
               Edit my listing
             </RouterLink>
 
-            <div v-else class="offer-placeholder">
-              <strong>Interested in this item?</strong>
-              <p>
-                The offer action will be enabled when the team’s Offer Management module is
-                integrated.
-              </p>
+            <div v-else class="offer-panel">
+              <template v-if="!authStore.isAuthenticated">
+                <strong>Interested in this item?</strong>
+                <p>Log in to make an offer to the seller.</p>
+                <button class="btn btn-primary w-100" type="button" @click="goToLogin">
+                  Login to make offer
+                </button>
+              </template>
+
+              <template v-else-if="existingOffer && !isEditingOffer">
+                <strong>Your offer</strong>
+                <div class="existing-offer">
+                  <span :class="`offer-status offer-status-${existingOffer.offer_status.toLowerCase()}`">
+                    {{ existingOffer.offer_status }}
+                  </span>
+                  <strong>{{ formatPrice(existingOffer.offer_price) }}</strong>
+                  <p v-if="existingOffer.message">{{ existingOffer.message }}</p>
+                  <p v-else>No message added.</p>
+                </div>
+
+                <div v-if="offerSuccess" class="alert alert-success py-2 mt-3">
+                  {{ offerSuccess }}
+                </div>
+                <div v-if="offerError" class="alert alert-danger py-2 mt-3">
+                  {{ offerError }}
+                </div>
+
+                <div class="offer-action-grid">
+                  <button
+                    class="btn btn-outline-primary"
+                    type="button"
+                    :disabled="!canEditExistingOffer || isSubmittingOffer"
+                    @click="startEditingOffer"
+                  >
+                    Edit offer
+                  </button>
+                  <button
+                    class="btn btn-outline-danger"
+                    type="button"
+                    :disabled="!canDeleteExistingOffer || isSubmittingOffer"
+                    @click="deleteOffer"
+                  >
+                    Delete offer
+                  </button>
+                </div>
+              </template>
+
+              <template v-else-if="listing.listing_status !== 'Available'">
+                <strong>Offers unavailable</strong>
+                <p>This listing is currently {{ listing.listing_status.toLowerCase() }}.</p>
+              </template>
+
+              <form v-else @submit.prevent="submitOffer">
+                <strong>{{ existingOffer ? 'Edit your offer' : 'Make an offer' }}</strong>
+                <p>
+                  {{
+                    existingOffer
+                      ? 'Update the price or message before the seller responds.'
+                      : `Send your price and an optional note to ${listing.seller?.name}.`
+                  }}
+                </p>
+
+                <div v-if="offerSuccess" class="alert alert-success py-2">
+                  {{ offerSuccess }}
+                </div>
+                <div v-if="offerError" class="alert alert-danger py-2">
+                  {{ offerError }}
+                </div>
+
+                <label class="form-label" for="offer-price">Offer price</label>
+                <div class="input-group mb-3">
+                  <span class="input-group-text">RM</span>
+                  <input
+                    id="offer-price"
+                    v-model="offerForm.offer_price"
+                    class="form-control"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    required
+                  />
+                </div>
+
+                <label class="form-label" for="offer-message">Message</label>
+                <textarea
+                  id="offer-message"
+                  v-model.trim="offerForm.message"
+                  class="form-control"
+                  maxlength="255"
+                  rows="3"
+                  placeholder="Optional note for the seller"
+                />
+                <div class="form-text text-end">{{ offerForm.message.length }}/255</div>
+
+                <button
+                  class="btn btn-primary btn-lg w-100 mt-3"
+                  type="submit"
+                  :disabled="existingOffer ? !canEditExistingOffer || isSubmittingOffer : !canOffer || isSubmittingOffer"
+                >
+                  {{
+                    isSubmittingOffer
+                      ? 'Saving...'
+                      : existingOffer
+                        ? 'Save offer'
+                        : 'Send offer'
+                  }}
+                </button>
+                <button
+                  v-if="existingOffer"
+                  class="btn btn-link w-100 mt-2"
+                  type="button"
+                  :disabled="isSubmittingOffer"
+                  @click="cancelEditingOffer"
+                >
+                  Cancel edit
+                </button>
+              </form>
             </div>
           </section>
         </div>
@@ -249,18 +493,82 @@ watch(() => route.params.id, loadListing, { immediate: true })
   font-weight: 700;
 }
 
-.offer-placeholder {
+.offer-panel {
   padding: 1rem;
-  border: 1px dashed rgba(13, 110, 253, 0.35);
+  border: 1px solid rgba(13, 110, 253, 0.22);
   border-radius: 0.8rem;
   background: rgba(13, 110, 253, 0.05);
 }
 
-.offer-placeholder p {
+.offer-panel p {
   margin: 0.35rem 0 0;
   color: var(--market-muted);
   font-size: 0.88rem;
   line-height: 1.55;
+}
+
+.offer-panel form > p,
+.offer-panel form > strong {
+  display: block;
+}
+
+.offer-panel .form-label {
+  margin-top: 1rem;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.existing-offer {
+  margin-top: 0.8rem;
+  padding: 0.9rem;
+  border: 1px solid var(--market-outline);
+  border-radius: 0.7rem;
+  background: #fff;
+}
+
+.existing-offer > strong {
+  display: block;
+  margin-top: 0.65rem;
+  color: var(--market-primary);
+  font-size: 1.35rem;
+}
+
+.offer-status {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.offer-status-pending {
+  background: #fff3cd;
+  color: #8a5b00;
+}
+
+.offer-status-accepted {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.offer-status-rejected,
+.offer-status-cancelled {
+  background: #f8d7da;
+  color: #842029;
+}
+
+.offer-action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  margin-top: 0.9rem;
+}
+
+@media (max-width: 575.98px) {
+  .offer-action-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .description-card h2 {

@@ -70,6 +70,9 @@ async function logout() {
               <RouterLink class="nav-link" :to="{ name: 'my-listings' }">My listings</RouterLink>
             </li>
             <li v-if="isAuthenticated" class="nav-item">
+              <RouterLink class="nav-link" :to="{ name: 'offers' }">Offers</RouterLink>
+            </li>
+            <li v-if="isAuthenticated" class="nav-item">
               <RouterLink class="nav-link" :to="{ name: 'listing-create' }">Sell</RouterLink>
             </li>
             <li v-if="isAdmin" class="nav-item">

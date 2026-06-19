@@ -27,7 +27,7 @@ Status reflects the current repository after the Marketplace Listing module impl
 | Database schema and seed | Fulfilled | Schema, migration-safe image column, users, categories, and sample listings |
 | README setup documentation | Fulfilled | Local database, backend, frontend, and API instructions |
 | Postman/API testing guide | Fulfilled | Authentication, category, and listing test guides in `docs/` |
-| Offer Management module | Pending teammate module | Database table exists; send/view/accept/reject/cancel APIs and UI are not implemented |
+| Offer Management module | Fulfilled | Buyers can make one offer per listing, edit/delete their offer, and sellers can view/accept/reject received offers |
 | Laragon/XAMPP demonstration | Ready for local test | Setup commands and environment templates are provided |
 
 ## Listing module acceptance summary
@@ -37,4 +37,6 @@ Status reflects the current repository after the Marketplace Listing module impl
 - Admin users can browse listings but cannot modify another seller’s listing.
 - Listing images use validated local JPG/PNG/WebP uploads, random filenames, cleanup, and a frontend fallback.
 - Listings with existing offers cannot be deleted, preserving relational integrity.
-- The detail page reserves a clear integration area for the Offer module without exposing a broken action.
+- The detail page includes a Make Offer form for authenticated non-owners.
+- Existing buyer offers are shown on listing details with edit/delete controls.
+- The Offers page supports sent offer tracking and seller-side accept/reject workflows.

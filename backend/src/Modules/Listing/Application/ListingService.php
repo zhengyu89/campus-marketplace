@@ -18,9 +18,9 @@ final class ListingService
     private const SORTS = ['newest', 'oldest', 'price_asc', 'price_desc'];
 
     public function __construct(
-        private readonly ListingRepository $listingRepository,
-        private readonly CategoryRepository $categoryRepository,
-        private readonly ListingImageStorage $imageStorage
+        private ListingRepository $listingRepository,
+        private CategoryRepository $categoryRepository,
+        private ListingImageStorage $imageStorage
     ) {
     }
 

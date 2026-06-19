@@ -16,8 +16,8 @@ use Slim\Psr7\Response;
 final class JwtAuthenticationMiddleware
 {
     public function __construct(
-        private readonly JwtService $jwtService,
-        private readonly UserRepository $userRepository
+        private JwtService $jwtService,
+        private UserRepository $userRepository
     ) {
     }
 

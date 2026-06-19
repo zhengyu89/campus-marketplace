@@ -27,7 +27,7 @@ final class ListingRepository
         INNER JOIN users ON users.user_id = listings.seller_id
     ';
 
-    public function __construct(private readonly PDO $pdo)
+    public function __construct(private PDO $pdo)
     {
     }
 
@@ -165,7 +165,13 @@ final class ListingRepository
              WHERE listing_id = :listing_id'
         );
         $statement->execute([
-            ...$listing,
+            'category_id' => $listing['category_id'],
+            'title' => $listing['title'],
+            'description' => $listing['description'],
+            'price' => $listing['price'],
+            'image_url' => $listing['image_url'],
+            'condition_status' => $listing['condition_status'],
+            'listing_status' => $listing['listing_status'],
             'listing_id' => $listingId,
         ]);
 

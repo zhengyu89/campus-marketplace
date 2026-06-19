@@ -17,6 +17,9 @@ use App\Modules\Listing\Application\ListingService;
 use App\Modules\Listing\Infrastructure\ListingImageStorage;
 use App\Modules\Listing\Infrastructure\ListingRepository;
 use App\Modules\Listing\Presentation\ListingController;
+use App\Modules\Offer\Application\OfferService;
+use App\Modules\Offer\Infrastructure\OfferRepository;
+use App\Modules\Offer\Presentation\OfferController;
 use Slim\App;
 
 return function (App $app): void {
@@ -82,6 +85,31 @@ return function (App $app): void {
         ];
 
         return $dependencies;
+    };
+
+    $resolveOfferDependencies = static function (): array {
+        static $dependencies = null;
+
+        if ($dependencies !== null) {
+            return $dependencies;
+        }
+
+        $pdo = DatabaseFactory::create();
+        $offerRepository = new OfferRepository($pdo);
+        $listingRepository = new ListingRepository($pdo);
+        $offerService = new OfferService($offerRepository, $listingRepository);
+
+        $dependencies = [
+            'offerController' => new OfferController($offerService),
+        ];
+
+        return $dependencies;
+    };
+
+    $protectRoute = static function ($route) use ($resolveAuthDependencies) {
+        return $route->add(function ($request, $handler) use ($resolveAuthDependencies) {
+            return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
+        });
     };
 
     $protectAdminRoute = static function ($route) use ($resolveAuthDependencies) {
@@ -155,6 +183,38 @@ return function (App $app): void {
     })->add(function ($request, $handler) use ($resolveAuthDependencies) {
         return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
     });
+
+    $protectRoute($app->post('/api/listings/{id}/offers', function ($request, $response, $args) use ($resolveOfferDependencies) {
+        return $resolveOfferDependencies()['offerController']->store($request, $response, $args);
+    }));
+
+    $protectRoute($app->get('/api/offers/mine', function ($request, $response) use ($resolveOfferDependencies) {
+        return $resolveOfferDependencies()['offerController']->sent($request, $response);
+    }));
+
+    $protectRoute($app->get('/api/offers/received', function ($request, $response) use ($resolveOfferDependencies) {
+        return $resolveOfferDependencies()['offerController']->received($request, $response);
+    }));
+
+    $protectRoute($app->put('/api/offers/{id}', function ($request, $response, $args) use ($resolveOfferDependencies) {
+        return $resolveOfferDependencies()['offerController']->update($request, $response, $args);
+    }));
+
+    $protectRoute($app->delete('/api/offers/{id}', function ($request, $response, $args) use ($resolveOfferDependencies) {
+        return $resolveOfferDependencies()['offerController']->delete($request, $response, $args);
+    }));
+
+    $protectRoute($app->post('/api/offers/{id}/accept', function ($request, $response, $args) use ($resolveOfferDependencies) {
+        return $resolveOfferDependencies()['offerController']->accept($request, $response, $args);
+    }));
+
+    $protectRoute($app->post('/api/offers/{id}/reject', function ($request, $response, $args) use ($resolveOfferDependencies) {
+        return $resolveOfferDependencies()['offerController']->reject($request, $response, $args);
+    }));
+
+    $protectRoute($app->post('/api/offers/{id}/cancel', function ($request, $response, $args) use ($resolveOfferDependencies) {
+        return $resolveOfferDependencies()['offerController']->cancel($request, $response, $args);
+    }));
 
     $app->get('/api/categories', function ($request, $response) use ($resolveCategoryDependencies) {
         return $resolveCategoryDependencies()['categoryController']->index($request, $response);

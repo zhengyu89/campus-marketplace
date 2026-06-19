@@ -2,7 +2,14 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/../vendor/autoload.php';
+$autoloadPath = __DIR__ . '/../vendor/autoload.php';
+
+if (!is_file($autoloadPath)) {
+    fwrite(STDERR, 'Composer dependencies are missing. Run "composer install" in the backend directory first.' . PHP_EOL);
+    exit(1);
+}
+
+require $autoloadPath;
 
 use Dotenv\Dotenv;
 

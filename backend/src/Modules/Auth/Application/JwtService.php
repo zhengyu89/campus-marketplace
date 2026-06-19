@@ -12,8 +12,8 @@ use Throwable;
 final class JwtService
 {
     public function __construct(
-        private readonly string $secret,
-        private readonly int $ttl
+        private string $secret,
+        private int $ttl
     ) {
     }
 

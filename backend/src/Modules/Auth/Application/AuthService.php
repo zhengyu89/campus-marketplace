@@ -10,8 +10,8 @@ use App\Modules\Auth\Infrastructure\UserRepository;
 final class AuthService
 {
     public function __construct(
-        private readonly UserRepository $userRepository,
-        private readonly JwtService $jwtService
+        private UserRepository $userRepository,
+        private JwtService $jwtService
     ) {
     }
 
