@@ -45,7 +45,7 @@ async function submit(payload) {
 
   try {
     const savedListing = isEditing.value
-      ? await listingsStore.updateListing(route.params.id, payload)
+      ? await listingsStore.updateListingWithImage(route.params.id, payload)
       : await listingsStore.createListing(payload)
 
     await router.push({

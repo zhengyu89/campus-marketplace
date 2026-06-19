@@ -1,6 +1,20 @@
 import { defineStore } from 'pinia'
 import { api } from '../api/http'
 
+function createListingFormData(fields, imageFile) {
+  const formData = new FormData()
+
+  Object.entries(fields).forEach(([key, value]) => {
+    formData.append(key, String(value))
+  })
+
+  if (imageFile) {
+    formData.append('image', imageFile)
+  }
+
+  return formData
+}
+
 export const useListingsStore = defineStore('listings', {
   state: () => ({
     listings: [],
@@ -69,8 +83,22 @@ export const useListingsStore = defineStore('listings', {
         this.isLoadingMine = false
       }
     },
-    async createListing(payload) {
-      const response = await api.post('/listings', payload)
+    syncListing(listing) {
+      if (!listing) {
+        return
+      }
+
+      this.currentListing =
+        this.currentListing?.listing_id === listing.listing_id ? listing : this.currentListing
+      this.myListings = this.myListings.map((item) =>
+        item.listing_id === listing.listing_id ? listing : item
+      )
+      this.listings = this.listings.map((item) =>
+        item.listing_id === listing.listing_id ? listing : item
+      )
+    },
+    async createListing({ fields, imageFile }) {
+      const response = await api.post('/listings', createListingFormData(fields, imageFile))
       const listing = response.data?.data?.listing
 
       if (listing) {
@@ -83,15 +111,23 @@ export const useListingsStore = defineStore('listings', {
       const response = await api.put(`/listings/${listingId}`, payload)
       const listing = response.data?.data?.listing
 
-      if (listing) {
-        this.currentListing =
-          this.currentListing?.listing_id === listing.listing_id ? listing : this.currentListing
-        this.myListings = this.myListings.map((item) =>
-          item.listing_id === listing.listing_id ? listing : item
-        )
-        this.listings = this.listings.map((item) =>
-          item.listing_id === listing.listing_id ? listing : item
-        )
+      this.syncListing(listing)
+
+      return listing
+    },
+    async updateListingWithImage(listingId, { fields, imageFile, removeImage }) {
+      let listing = await this.updateListing(listingId, fields)
+
+      if (imageFile) {
+        const imageData = new FormData()
+        imageData.append('image', imageFile)
+        const response = await api.post(`/listings/${listingId}/image`, imageData)
+        listing = response.data?.data?.listing
+        this.syncListing(listing)
+      } else if (removeImage && listing?.image_url) {
+        const response = await api.delete(`/listings/${listingId}/image`)
+        listing = response.data?.data?.listing
+        this.syncListing(listing)
       }
 
       return listing

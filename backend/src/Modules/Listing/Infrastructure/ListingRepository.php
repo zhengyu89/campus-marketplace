@@ -172,6 +172,21 @@ final class ListingRepository
         return $this->findById($listingId);
     }
 
+    public function updateImage(int $listingId, ?string $imageUrl): array
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE listings
+             SET image_url = :image_url
+             WHERE listing_id = :listing_id'
+        );
+        $statement->execute([
+            'listing_id' => $listingId,
+            'image_url' => $imageUrl,
+        ]);
+
+        return $this->findById($listingId);
+    }
+
     public function delete(int $listingId): bool
     {
         $statement = $this->pdo->prepare(

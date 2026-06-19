@@ -6,7 +6,10 @@ namespace App\Modules\Listing\Application;
 
 use App\Core\Application\Exception\ApiException;
 use App\Modules\Category\Infrastructure\CategoryRepository;
+use App\Modules\Listing\Infrastructure\ListingImageStorage;
 use App\Modules\Listing\Infrastructure\ListingRepository;
+use Psr\Http\Message\UploadedFileInterface;
+use Throwable;
 
 final class ListingService
 {
@@ -16,7 +19,8 @@ final class ListingService
 
     public function __construct(
         private readonly ListingRepository $listingRepository,
-        private readonly CategoryRepository $categoryRepository
+        private readonly CategoryRepository $categoryRepository,
+        private readonly ListingImageStorage $imageStorage
     ) {
     }
 
@@ -43,12 +47,26 @@ final class ListingService
         );
     }
 
-    public function createListing(int $sellerId, array $payload): array
+    public function createListing(
+        int $sellerId,
+        array $payload,
+        ?UploadedFileInterface $image = null
+    ): array
     {
         $validated = $this->validateListing($payload);
+        $validated['image_url'] = null;
         $validated['seller_id'] = $sellerId;
 
-        return $this->toListingPayload($this->listingRepository->create($validated));
+        if ($image !== null) {
+            $validated['image_url'] = $this->imageStorage->store($image);
+        }
+
+        try {
+            return $this->toListingPayload($this->listingRepository->create($validated));
+        } catch (Throwable $exception) {
+            $this->imageStorage->delete($validated['image_url']);
+            throw $exception;
+        }
     }
 
     public function updateListing(int $listingId, int $sellerId, array $payload): array
@@ -61,9 +79,7 @@ final class ListingService
             'title' => $payload['title'] ?? $listing['title'],
             'description' => $payload['description'] ?? $listing['description'],
             'price' => $payload['price'] ?? $listing['price'],
-            'image_url' => array_key_exists('image_url', $payload)
-                ? $payload['image_url']
-                : $listing['image_url'],
+            'image_url' => $listing['image_url'],
             'condition_status' => $payload['condition_status'] ?? $listing['condition_status'],
             'listing_status' => $payload['listing_status'] ?? $listing['listing_status'],
         ];
@@ -74,6 +90,37 @@ final class ListingService
                 $this->validateListing($mergedPayload)
             )
         );
+    }
+
+    public function replaceListingImage(
+        int $listingId,
+        int $sellerId,
+        UploadedFileInterface $image
+    ): array {
+        $listing = $this->requireListing($listingId);
+        $this->ensureOwner($listing, $sellerId);
+        $newImagePath = $this->imageStorage->store($image);
+
+        try {
+            $updatedListing = $this->listingRepository->updateImage($listingId, $newImagePath);
+        } catch (Throwable $exception) {
+            $this->imageStorage->delete($newImagePath);
+            throw $exception;
+        }
+
+        $this->imageStorage->delete($listing['image_url']);
+
+        return $this->toListingPayload($updatedListing);
+    }
+
+    public function removeListingImage(int $listingId, int $sellerId): array
+    {
+        $listing = $this->requireListing($listingId);
+        $this->ensureOwner($listing, $sellerId);
+        $updatedListing = $this->listingRepository->updateImage($listingId, null);
+        $this->imageStorage->delete($listing['image_url']);
+
+        return $this->toListingPayload($updatedListing);
     }
 
     public function deleteListing(int $listingId, int $sellerId): array
@@ -89,6 +136,7 @@ final class ListingService
         }
 
         $this->listingRepository->delete($listingId);
+        $this->imageStorage->delete($listing['image_url']);
 
         return [
             'message' => 'Listing deleted successfully',
@@ -197,15 +245,8 @@ final class ListingService
             $errors['listing_status'] = 'Status must be Available, Reserved, or Sold.';
         }
 
-        if ($imageUrl !== '') {
-            $parsedUrl = filter_var($imageUrl, FILTER_VALIDATE_URL);
-            $scheme = strtolower((string) parse_url($imageUrl, PHP_URL_SCHEME));
-
-            if ($parsedUrl === false || !in_array($scheme, ['http', 'https'], true)) {
-                $errors['image_url'] = 'Image URL must use http or https.';
-            } elseif (mb_strlen($imageUrl) > 2048) {
-                $errors['image_url'] = 'Image URL must not exceed 2048 characters.';
-            }
+        if ($imageUrl !== '' && !$this->isValidStoredImageReference($imageUrl)) {
+            $errors['image_url'] = 'Stored image reference is invalid.';
         }
 
         if ($errors !== []) {
@@ -221,6 +262,20 @@ final class ListingService
             'condition_status' => $condition,
             'listing_status' => $status,
         ];
+    }
+
+    private function isValidStoredImageReference(string $imageUrl): bool
+    {
+        if (preg_match('#^/uploads/listings/[a-f0-9]{32}\.(?:jpg|png|webp)$#', $imageUrl) === 1) {
+            return true;
+        }
+
+        $parsedUrl = filter_var($imageUrl, FILTER_VALIDATE_URL);
+        $scheme = strtolower((string) parse_url($imageUrl, PHP_URL_SCHEME));
+
+        return $parsedUrl !== false
+            && in_array($scheme, ['http', 'https'], true)
+            && mb_strlen($imageUrl) <= 2048;
     }
 
     private function requireListing(int $listingId): array

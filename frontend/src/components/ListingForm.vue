@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import ListingImage from './ListingImage.vue'
 
 const props = defineProps({
@@ -27,14 +27,28 @@ const props = defineProps({
 
 const emit = defineEmits(['submit'])
 const errors = ref({})
+const imageInput = ref(null)
+const selectedImage = ref(null)
+const previewObjectUrl = ref('')
+const removeImage = ref(false)
 const form = reactive({
   title: '',
   description: '',
   price: '',
   category_id: '',
-  image_url: '',
   condition_status: 'Used',
   listing_status: 'Available',
+})
+const previewSource = computed(() => {
+  if (previewObjectUrl.value) {
+    return previewObjectUrl.value
+  }
+
+  if (removeImage.value) {
+    return ''
+  }
+
+  return props.listing?.image_url ?? ''
 })
 
 watch(
@@ -45,10 +59,11 @@ watch(
       description: listing?.description ?? '',
       price: listing?.price ?? '',
       category_id: listing?.category_id ? String(listing.category_id) : '',
-      image_url: listing?.image_url ?? '',
       condition_status: listing?.condition_status ?? 'Used',
       listing_status: listing?.listing_status ?? 'Available',
     })
+    clearSelectedImage()
+    removeImage.value = false
   },
   { immediate: true }
 )
@@ -85,15 +100,10 @@ function validate() {
     nextErrors.category_id = 'Category is required.'
   }
 
-  if (form.image_url.trim()) {
-    try {
-      const url = new URL(form.image_url.trim())
-      if (!['http:', 'https:'].includes(url.protocol)) {
-        nextErrors.image_url = 'Image URL must use http or https.'
-      }
-    } catch {
-      nextErrors.image_url = 'Enter a valid image URL.'
-    }
+  if (selectedImage.value && !['image/jpeg', 'image/png', 'image/webp'].includes(selectedImage.value.type)) {
+    nextErrors.image = 'Image must be a JPG, PNG, or WebP file.'
+  } else if (selectedImage.value && selectedImage.value.size > 5 * 1024 * 1024) {
+    nextErrors.image = 'Image size must not exceed 5 MB.'
   }
 
   errors.value = nextErrors
@@ -106,15 +116,78 @@ function submit() {
   }
 
   emit('submit', {
-    title: form.title.trim(),
-    description: form.description.trim(),
-    price: Number(form.price),
-    category_id: Number(form.category_id),
-    image_url: form.image_url.trim(),
-    condition_status: form.condition_status,
-    listing_status: form.listing_status,
+    fields: {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      price: Number(form.price),
+      category_id: Number(form.category_id),
+      condition_status: form.condition_status,
+      listing_status: form.listing_status,
+    },
+    imageFile: selectedImage.value,
+    removeImage: removeImage.value,
   })
 }
+
+function handleImageSelection(event) {
+  const [file] = event.target.files ?? []
+  errors.value = {
+    ...errors.value,
+    image: undefined,
+  }
+
+  if (!file) {
+    clearSelectedImage()
+    return
+  }
+
+  clearPreviewObjectUrl()
+  selectedImage.value = null
+
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    errors.value.image = 'Image must be a JPG, PNG, or WebP file.'
+    event.target.value = ''
+    return
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    errors.value.image = 'Image size must not exceed 5 MB.'
+    event.target.value = ''
+    return
+  }
+
+  clearPreviewObjectUrl()
+  selectedImage.value = file
+  previewObjectUrl.value = URL.createObjectURL(file)
+  removeImage.value = false
+}
+
+function clearSelectedImage() {
+  clearPreviewObjectUrl()
+  selectedImage.value = null
+
+  if (imageInput.value) {
+    imageInput.value.value = ''
+  }
+}
+
+function clearPreviewObjectUrl() {
+  if (previewObjectUrl.value) {
+    URL.revokeObjectURL(previewObjectUrl.value)
+    previewObjectUrl.value = ''
+  }
+}
+
+function removeCurrentImage() {
+  clearSelectedImage()
+  removeImage.value = true
+}
+
+function restoreCurrentImage() {
+  removeImage.value = false
+}
+
+onBeforeUnmount(clearPreviewObjectUrl)
 </script>
 
 <template>
@@ -237,18 +310,39 @@ function submit() {
             </div>
 
             <div>
-              <label class="form-label" for="listing-image-url">Image URL (optional)</label>
+              <label class="form-label" for="listing-image">Item image (optional)</label>
               <input
-                id="listing-image-url"
-                v-model="form.image_url"
+                id="listing-image"
+                ref="imageInput"
                 class="form-control"
-                :class="{ 'is-invalid': errors.image_url }"
-                type="url"
-                maxlength="2048"
-                placeholder="https://example.com/item-photo.jpg"
+                :class="{ 'is-invalid': errors.image }"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                @change="handleImageSelection"
               />
-              <div v-if="errors.image_url" class="invalid-feedback">{{ errors.image_url }}</div>
-              <div class="form-text">Use a direct HTTP or HTTPS image link.</div>
+              <div v-if="errors.image" class="invalid-feedback">{{ errors.image }}</div>
+              <div class="form-text">JPG, PNG, or WebP. Maximum file size: 5 MB.</div>
+
+              <div v-if="selectedImage" class="image-selection">
+                <span>{{ selectedImage.name }}</span>
+                <button class="btn btn-sm btn-outline-secondary" type="button" @click="clearSelectedImage">
+                  Clear selection
+                </button>
+              </div>
+
+              <div v-else-if="listing?.image_url && !removeImage" class="image-selection">
+                <span>Current listing image will be kept.</span>
+                <button class="btn btn-sm btn-outline-danger" type="button" @click="removeCurrentImage">
+                  Remove image
+                </button>
+              </div>
+
+              <div v-else-if="listing?.image_url && removeImage" class="image-selection removal-note">
+                <span>The current image will be removed when you save.</span>
+                <button class="btn btn-sm btn-outline-secondary" type="button" @click="restoreCurrentImage">
+                  Keep current image
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -260,7 +354,7 @@ function submit() {
           <h2>Your listing card</h2>
           <ListingImage
             class="preview-image"
-            :src="form.image_url"
+            :src="previewSource"
             :alt="form.title || 'Listing preview'"
             ratio="4 / 3"
           />
@@ -339,6 +433,32 @@ textarea.form-control {
 .preview-image {
   margin: 1rem 0;
   border-radius: 0.85rem;
+}
+
+.image-selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--market-outline);
+  border-radius: 0.65rem;
+  background: var(--market-surface-low);
+  color: var(--market-muted);
+  font-size: 0.8rem;
+}
+
+.removal-note {
+  border-color: rgba(186, 26, 26, 0.25);
+  background: #fff7f6;
+}
+
+@media (max-width: 575.98px) {
+  .image-selection {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 .preview-copy strong {

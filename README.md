@@ -126,6 +126,8 @@ and only the original seller can edit or delete a listing.
 - `POST /api/listings`
 - `PUT /api/listings/{id}`
 - `DELETE /api/listings/{id}`
+- `POST /api/listings/{id}/image`
+- `DELETE /api/listings/{id}/image`
 
 Browse filters:
 
@@ -143,9 +145,16 @@ Frontend listing pages:
 - `http://localhost:5173/listings/{id}/edit`
 - `http://localhost:5173/my-listings`
 
-The `listings.image_url` field is optional and accepts HTTP/HTTPS URLs. Running
-`composer db:setup` or `composer db:schema` adds the column to an existing local database when
-needed.
+Listing images are optional local JPG, PNG, or WebP uploads with a 5 MB application limit.
+Files are stored in `backend/public/uploads/listings/`, while MySQL stores the generated public
+path in `listings.image_url`. Replacing, removing, or deleting a listing also removes its managed
+local image. Seeded remote image URLs remain supported for sample data.
+
+If PHP rejects an upload before the application receives it, confirm `upload_max_filesize` and
+`post_max_size` in the active Laragon/XAMPP `php.ini` are at least `5M`.
+
+Running `composer db:setup` or `composer db:schema` adds the `image_url` column to an existing
+local database when needed.
 
 Detailed API examples are in `docs/listing_api_test.md`.
 

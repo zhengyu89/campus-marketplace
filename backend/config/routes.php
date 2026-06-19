@@ -14,6 +14,7 @@ use App\Modules\Category\Application\CategoryService;
 use App\Modules\Category\Infrastructure\CategoryRepository;
 use App\Modules\Category\Presentation\CategoryController;
 use App\Modules\Listing\Application\ListingService;
+use App\Modules\Listing\Infrastructure\ListingImageStorage;
 use App\Modules\Listing\Infrastructure\ListingRepository;
 use App\Modules\Listing\Presentation\ListingController;
 use Slim\App;
@@ -70,7 +71,11 @@ return function (App $app): void {
         $pdo = DatabaseFactory::create();
         $listingRepository = new ListingRepository($pdo);
         $categoryRepository = new CategoryRepository($pdo);
-        $listingService = new ListingService($listingRepository, $categoryRepository);
+        $listingService = new ListingService(
+            $listingRepository,
+            $categoryRepository,
+            new ListingImageStorage()
+        );
 
         $dependencies = [
             'listingController' => new ListingController($listingService),
@@ -129,6 +134,18 @@ return function (App $app): void {
 
     $app->put('/api/listings/{id}', function ($request, $response, $args) use ($resolveListingDependencies) {
         return $resolveListingDependencies()['listingController']->update($request, $response, $args);
+    })->add(function ($request, $handler) use ($resolveAuthDependencies) {
+        return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
+    });
+
+    $app->post('/api/listings/{id}/image', function ($request, $response, $args) use ($resolveListingDependencies) {
+        return $resolveListingDependencies()['listingController']->uploadImage($request, $response, $args);
+    })->add(function ($request, $handler) use ($resolveAuthDependencies) {
+        return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
+    });
+
+    $app->delete('/api/listings/{id}/image', function ($request, $response, $args) use ($resolveListingDependencies) {
+        return $resolveListingDependencies()['listingController']->removeImage($request, $response, $args);
     })->add(function ($request, $handler) use ($resolveAuthDependencies) {
         return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
     });

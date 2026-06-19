@@ -35,6 +35,6 @@ Status reflects the current repository after the Marketplace Listing module impl
 - Guests can browse, search, filter, sort, and open listing details.
 - Logged-in users can create listings and manage only their own listings.
 - Admin users can browse listings but cannot modify another seller’s listing.
-- Listing images use optional HTTP/HTTPS URLs with a frontend fallback.
+- Listing images use validated local JPG/PNG/WebP uploads, random filenames, cleanup, and a frontend fallback.
 - Listings with existing offers cannot be deleted, preserving relational integrity.
 - The detail page reserves a clear integration area for the Offer module without exposing a broken action.

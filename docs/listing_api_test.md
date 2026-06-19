@@ -81,23 +81,24 @@ Expected: `200 OK`. A missing or invalid token returns `401 Unauthorized`.
 
 ### Create a listing
 
+Listing creation uses `multipart/form-data` so the optional image can be uploaded with the item
+fields.
+
 ```http
 POST /api/listings
 Authorization: Bearer <token>
-Content-Type: application/json
+Content-Type: multipart/form-data
 
-{
-  "title": "Engineering Mathematics Textbook",
-  "description": "Clean copy with light notes in two chapters.",
-  "price": 38.50,
-  "category_id": 1,
-  "image_url": "https://example.com/textbook.jpg",
-  "condition_status": "Used",
-  "listing_status": "Available"
-}
+title=Engineering Mathematics Textbook
+description=Clean copy with light notes in two chapters.
+price=38.50
+category_id=1
+condition_status=Used
+listing_status=Available
+image=<JPG, PNG, or WebP file>
 ```
 
-Expected: `201 Created`.
+The image is optional. Expected: `201 Created`.
 
 Invalid fields return `422 Unprocessable Entity` with field errors.
 
@@ -115,7 +116,6 @@ Content-Type: application/json
   "description": "Updated description.",
   "price": 35,
   "category_id": 1,
-  "image_url": "",
   "condition_status": "Used",
   "listing_status": "Available"
 }
@@ -134,6 +134,27 @@ Content-Type: application/json
 ```
 
 Expected: `200 OK`. A different registered user receives `403 Forbidden`.
+
+### Replace a listing image
+
+```http
+POST /api/listings/7/image
+Authorization: Bearer <owner-token>
+Content-Type: multipart/form-data
+
+image=<JPG, PNG, or WebP file>
+```
+
+Expected: `200 OK`. The previous managed local image is deleted after the new image is saved.
+
+### Remove a listing image
+
+```http
+DELETE /api/listings/7/image
+Authorization: Bearer <owner-token>
+```
+
+Expected: `200 OK`. `image_url` becomes `null`, and a managed local file is deleted.
 
 ### Delete a listing
 
@@ -156,5 +177,16 @@ Confirm these return `422`:
 - Zero or negative price
 - Unknown category ID
 - Unsupported condition or listing status
-- Non-HTTP image URL such as `ftp://example.com/image.jpg`
+- Image larger than 5 MB
+- Non-image file or unsupported image type
 - Unsupported filter or sort value
+
+## Image storage behaviour
+
+- Accepted formats: JPG, PNG, and WebP
+- Maximum application file size: 5 MB
+- Generated filenames: random 32-character hexadecimal names
+- Storage directory: `backend/public/uploads/listings/`
+- Public path example: `/uploads/listings/abc123...png`
+- Managed files are removed when replaced, explicitly removed, or deleted with their listing
+- Seeded HTTP/HTTPS image URLs remain readable but are never deleted from external services

@@ -14,10 +14,32 @@ const props = defineProps({
     type: String,
     default: '1 / 1',
   },
+  fit: {
+    type: String,
+    default: 'cover',
+    validator: (value) => ['cover', 'contain'].includes(value),
+  },
 })
 
 const failed = ref(false)
-const canShowImage = computed(() => Boolean(props.src) && !failed.value)
+const resolvedSrc = computed(() => {
+  if (!props.src || /^(?:https?:|blob:|data:)/i.test(props.src)) {
+    return props.src
+  }
+
+  if (props.src.startsWith('/')) {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+
+    try {
+      return `${new URL(apiBaseUrl).origin}${props.src}`
+    } catch {
+      return props.src
+    }
+  }
+
+  return props.src
+})
+const canShowImage = computed(() => Boolean(resolvedSrc.value) && !failed.value)
 
 watch(
   () => props.src,
@@ -32,8 +54,9 @@ watch(
     <img
       v-if="canShowImage"
       class="listing-image-element"
-      :src="src"
+      :src="resolvedSrc"
       :alt="alt"
+      :style="{ objectFit: fit }"
       loading="lazy"
       @error="failed = true"
     />

@@ -61,7 +61,12 @@ watch(() => route.params.id, loadListing, { immediate: true })
       <div v-else-if="listing" class="row g-4 g-xl-5 mt-1">
         <div class="col-lg-7">
           <div class="image-card">
-            <ListingImage :src="listing.image_url" :alt="listing.title" ratio="4 / 3" />
+            <ListingImage
+              :src="listing.image_url"
+              :alt="listing.title"
+              ratio="4 / 3"
+              fit="contain"
+            />
           </div>
         </div>
 
@@ -113,7 +118,7 @@ watch(() => route.params.id, loadListing, { immediate: true })
           </section>
         </div>
 
-        <div class="col-lg-8">
+        <div class="col-12">
           <section class="description-card">
             <span class="market-kicker">Item details</span>
             <h2>Description</h2>
