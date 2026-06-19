@@ -6,6 +6,8 @@
 # Backend
 /backend/vendor/
 /backend/.env
+/backend/public/uploads/listings/*
+!/backend/public/uploads/listings/.gitkeep
 
 # Logs
 *.log

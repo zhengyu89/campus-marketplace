@@ -5,7 +5,10 @@ import AccountView from '../views/AccountView.vue'
 import AdminCategoriesView from '../views/AdminCategoriesView.vue'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
+import ListingDetailView from '../views/ListingDetailView.vue'
+import ListingEditorView from '../views/ListingEditorView.vue'
 import MarketResultsView from '../views/MarketResultsView.vue'
+import MyListingsView from '../views/MyListingsView.vue'
 import RegisterView from '../views/RegisterView.vue'
 
 const router = createRouter({
@@ -63,6 +66,34 @@ const router = createRouter({
       path: '/market',
       name: 'market',
       component: MarketResultsView,
+    },
+    {
+      path: '/listings/create',
+      name: 'listing-create',
+      component: ListingEditorView,
+      meta: {
+        requiresAuth: true,
+        roles: ['user', 'admin'],
+      },
+    },
+    {
+      path: '/listings/:id/edit',
+      name: 'listing-edit',
+      component: ListingEditorView,
+      meta: {
+        requiresAuth: true,
+        roles: ['user', 'admin'],
+      },
+    },
+    {
+      path: '/listings/:id',
+      name: 'listing-detail',
+      component: ListingDetailView,
+    },
+    {
+      path: '/my-listings',
+      name: 'my-listings',
+      component: MyListingsView,
       meta: {
         requiresAuth: true,
         roles: ['user', 'admin'],

@@ -13,6 +13,10 @@ use App\Modules\Auth\Presentation\AuthController;
 use App\Modules\Category\Application\CategoryService;
 use App\Modules\Category\Infrastructure\CategoryRepository;
 use App\Modules\Category\Presentation\CategoryController;
+use App\Modules\Listing\Application\ListingService;
+use App\Modules\Listing\Infrastructure\ListingImageStorage;
+use App\Modules\Listing\Infrastructure\ListingRepository;
+use App\Modules\Listing\Presentation\ListingController;
 use Slim\App;
 
 return function (App $app): void {
@@ -57,6 +61,29 @@ return function (App $app): void {
         return $dependencies;
     };
 
+    $resolveListingDependencies = static function (): array {
+        static $dependencies = null;
+
+        if ($dependencies !== null) {
+            return $dependencies;
+        }
+
+        $pdo = DatabaseFactory::create();
+        $listingRepository = new ListingRepository($pdo);
+        $categoryRepository = new CategoryRepository($pdo);
+        $listingService = new ListingService(
+            $listingRepository,
+            $categoryRepository,
+            new ListingImageStorage()
+        );
+
+        $dependencies = [
+            'listingController' => new ListingController($listingService),
+        ];
+
+        return $dependencies;
+    };
+
     $protectAdminRoute = static function ($route) use ($resolveAuthDependencies) {
         return $route
             ->add(new RequireRoleMiddleware(['admin']))
@@ -85,15 +112,48 @@ return function (App $app): void {
         return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
     });
 
-    $app->get('/api/listings', function ($request, $response) {
-        return JsonResponder::success($response, [
-            [
-                'listing_id' => 1,
-                'title' => 'Sample Marketplace Listing',
-                'price' => 10.00,
-                'status' => 'Available',
-            ],
-        ]);
+    $app->get('/api/listings', function ($request, $response) use ($resolveListingDependencies) {
+        return $resolveListingDependencies()['listingController']->index($request, $response);
+    });
+
+    $app->get('/api/listings/mine', function ($request, $response) use ($resolveListingDependencies) {
+        return $resolveListingDependencies()['listingController']->mine($request, $response);
+    })->add(function ($request, $handler) use ($resolveAuthDependencies) {
+        return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
+    });
+
+    $app->get('/api/listings/{id}', function ($request, $response, $args) use ($resolveListingDependencies) {
+        return $resolveListingDependencies()['listingController']->show($request, $response, $args);
+    });
+
+    $app->post('/api/listings', function ($request, $response) use ($resolveListingDependencies) {
+        return $resolveListingDependencies()['listingController']->store($request, $response);
+    })->add(function ($request, $handler) use ($resolveAuthDependencies) {
+        return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
+    });
+
+    $app->put('/api/listings/{id}', function ($request, $response, $args) use ($resolveListingDependencies) {
+        return $resolveListingDependencies()['listingController']->update($request, $response, $args);
+    })->add(function ($request, $handler) use ($resolveAuthDependencies) {
+        return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
+    });
+
+    $app->post('/api/listings/{id}/image', function ($request, $response, $args) use ($resolveListingDependencies) {
+        return $resolveListingDependencies()['listingController']->uploadImage($request, $response, $args);
+    })->add(function ($request, $handler) use ($resolveAuthDependencies) {
+        return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
+    });
+
+    $app->delete('/api/listings/{id}/image', function ($request, $response, $args) use ($resolveListingDependencies) {
+        return $resolveListingDependencies()['listingController']->removeImage($request, $response, $args);
+    })->add(function ($request, $handler) use ($resolveAuthDependencies) {
+        return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
+    });
+
+    $app->delete('/api/listings/{id}', function ($request, $response, $args) use ($resolveListingDependencies) {
+        return $resolveListingDependencies()['listingController']->delete($request, $response, $args);
+    })->add(function ($request, $handler) use ($resolveAuthDependencies) {
+        return $resolveAuthDependencies()['jwtAuthentication']($request, $handler);
     });
 
     $app->get('/api/categories', function ($request, $response) use ($resolveCategoryDependencies) {

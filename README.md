@@ -115,6 +115,49 @@ The seed file also creates 10 registered user accounts:
 
 Protected requests use `Authorization: Bearer <token>`.
 
+## Marketplace Listing API
+
+Listing reads are public. Creating and managing listings requires a registered user or admin JWT,
+and only the original seller can edit or delete a listing.
+
+- `GET /api/listings`
+- `GET /api/listings/{id}`
+- `GET /api/listings/mine`
+- `POST /api/listings`
+- `PUT /api/listings/{id}`
+- `DELETE /api/listings/{id}`
+- `POST /api/listings/{id}/image`
+- `DELETE /api/listings/{id}/image`
+
+Browse filters:
+
+- `q`
+- `category_id`
+- `condition`
+- `status`
+- `sort=newest|oldest|price_asc|price_desc`
+
+Frontend listing pages:
+
+- `http://localhost:5173/market`
+- `http://localhost:5173/listings/{id}`
+- `http://localhost:5173/listings/create`
+- `http://localhost:5173/listings/{id}/edit`
+- `http://localhost:5173/my-listings`
+
+Listing images are optional local JPG, PNG, or WebP uploads with a 5 MB application limit.
+Files are stored in `backend/public/uploads/listings/`, while MySQL stores the generated public
+path in `listings.image_url`. Replacing, removing, or deleting a listing also removes its managed
+local image. Seeded remote image URLs remain supported for sample data.
+
+If PHP rejects an upload before the application receives it, confirm `upload_max_filesize` and
+`post_max_size` in the active Laragon/XAMPP `php.ini` are at least `5M`.
+
+Running `composer db:setup` or `composer db:schema` adds the `image_url` column to an existing
+local database when needed.
+
+Detailed API examples are in `docs/listing_api_test.md`.
+
 ## Category/Admin API
 
 Category reads are public, while write operations require an admin JWT token.
@@ -128,7 +171,13 @@ The admin category management page is available at:
 
 `http://localhost:5173/admin/categories`
 
-Additional Postman/API testing notes are in `docs/category_admin_test.md`.
+Additional Postman/API testing notes are in:
+
+- `docs/auth_test.md`
+- `docs/category_admin_test.md`
+- `docs/listing_api_test.md`
+
+The complete assignment requirement status is in `docs/requirement_check.md`.
 
 ## Manual Test Steps
 
@@ -136,11 +185,14 @@ Additional Postman/API testing notes are in `docs/category_admin_test.md`.
 2. Start the backend with `composer serve`.
 3. Start the frontend with `npm run dev`.
 4. Open `http://localhost:5173`.
-5. Log in with `registereduser1@gmail.com` / `User123!` and confirm the account page shows the `user` role.
-6. Log out and confirm `/account` redirects back to `/login`.
-7. Log in with `admin@gmail.com` / `Admin123!` and confirm the account page shows the `admin` role.
-8. Register a new user and confirm you are redirected to the login page.
-9. Log in with the new user and confirm you land on `/account`.
+5. Browse `/market` without logging in and test keyword/category/status filters.
+6. Open a listing detail page without logging in.
+7. Log in with `registereduser1@gmail.com` / `User123!`.
+8. Create a listing, edit it, and update its status from `/my-listings`.
+9. Log in as a second registered user and confirm the first user’s edit API returns `403`.
+10. Log out and confirm protected listing pages redirect to `/login`.
+11. Log in with `admin@gmail.com` / `Admin123!` and confirm category administration still works.
+12. Register a new user and confirm the account can create its own listing.
 
 ## Modules
 
