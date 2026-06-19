@@ -62,6 +62,18 @@ const roleDescription = computed(() => {
           <div class="alert alert-secondary mb-0">
             {{ roleDescription }}
           </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-4">
+            <RouterLink class="btn btn-primary" :to="{ name: 'listing-create' }">
+              Create listing
+            </RouterLink>
+            <RouterLink class="btn btn-outline-primary" :to="{ name: 'my-listings' }">
+              Manage my listings
+            </RouterLink>
+            <RouterLink class="btn btn-outline-secondary" :to="{ name: 'market' }">
+              Browse marketplace
+            </RouterLink>
+          </div>
         </section>
       </div>
     </div>

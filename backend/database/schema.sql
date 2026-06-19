@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS listings (
     title VARCHAR(150) NOT NULL,
     description TEXT NOT NULL,
     price DECIMAL(10, 2) NOT NULL,
+    image_url VARCHAR(2048) NULL,
     condition_status ENUM('New', 'Like New', 'Used') NOT NULL DEFAULT 'Used',
     listing_status ENUM('Available', 'Reserved', 'Sold') NOT NULL DEFAULT 'Available',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

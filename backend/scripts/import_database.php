@@ -20,6 +20,7 @@ if (!in_array($command, $supportedCommands, true)) {
 
 $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
 $port = $_ENV['DB_PORT'] ?? '3306';
+$database = $_ENV['DB_NAME'] ?? 'campus_marketplace';
 $username = $_ENV['DB_USER'] ?? 'root';
 $password = $_ENV['DB_PASS'] ?? '';
 $dsn = "mysql:host={$host};port={$port};charset=utf8mb4";
@@ -49,6 +50,14 @@ try {
         }
 
         runSqlFile($pdo, $filePath, $fileName);
+
+        if ($fileName === 'schema.sql') {
+            ensureListingImageColumn($pdo, $database);
+        }
+    }
+
+    if ($command === 'seed') {
+        ensureListingImageColumn($pdo, $database);
     }
 } catch (\Throwable $exception) {
     fwrite(STDERR, 'Database import failed: ' . $exception->getMessage() . PHP_EOL);
@@ -57,6 +66,21 @@ try {
 
 fwrite(STDOUT, 'Database import completed successfully.' . PHP_EOL);
 exit(0);
+
+function ensureListingImageColumn(\PDO $pdo, string $database): void
+{
+    $safeDatabase = str_replace('`', '``', $database);
+    $pdo->exec("USE `{$safeDatabase}`");
+
+    $statement = $pdo->query("SHOW COLUMNS FROM listings LIKE 'image_url'");
+
+    if ($statement->fetch() !== false) {
+        return;
+    }
+
+    fwrite(STDOUT, 'Adding listings.image_url column...' . PHP_EOL);
+    $pdo->exec('ALTER TABLE listings ADD COLUMN image_url VARCHAR(2048) NULL AFTER price');
+}
 
 function runSqlFile(\PDO $pdo, string $filePath, string $fileName): void
 {

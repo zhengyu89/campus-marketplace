@@ -6,256 +6,210 @@ import { useAuthStore } from './stores/auth'
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const searchQuery = ref('')
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.user?.role === 'admin')
-const primaryActionRoute = computed(() => (isAuthenticated.value ? { name: 'account' } : { name: 'register' }))
-const searchQuery = ref('')
 
 watch(
-  () => [route.name, route.query.q, route.query.search],
-  ([routeName, queryValue, pendingSearch]) => {
-    const nextValue =
-      typeof queryValue === 'string'
-        ? queryValue
-        : typeof pendingSearch === 'string' && routeName === 'login'
-          ? pendingSearch
-          : ''
-
-    searchQuery.value = nextValue
+  () => [route.name, route.query.q],
+  ([routeName, query]) => {
+    searchQuery.value = routeName === 'market' && typeof query === 'string' ? query : ''
   },
   { immediate: true }
 )
 
-async function handleLogout() {
-  authStore.logout()
-  await router.push({ name: 'login' })
+async function search() {
+  const q = searchQuery.value.trim()
+  await router.push({
+    name: 'market',
+    query: q ? { q } : {},
+  })
 }
 
-async function handleSearch() {
-  const trimmedQuery = searchQuery.value.trim()
-  const marketRoute = {
-    name: 'market',
-    query: trimmedQuery ? { q: trimmedQuery } : {},
-  }
-
-  if (isAuthenticated.value) {
-    await router.push(marketRoute)
-    return
-  }
-
-  const loginQuery = {
-    redirect: router.resolve(marketRoute).fullPath,
-  }
-
-  if (trimmedQuery !== '') {
-    loginQuery.search = trimmedQuery
-  }
-
-  await router.push({
-    name: 'login',
-    query: loginQuery,
-  })
+async function logout() {
+  authStore.logout()
+  await router.push({ name: 'home' })
 }
 </script>
 
 <template>
-  <div class="app-shell min-vh-100">
+  <div class="app-shell">
     <header class="app-header">
-      <nav class="container-xl d-flex flex-wrap align-items-center gap-3 py-3 py-lg-4">
-        <RouterLink class="app-brand mb-0" :to="{ name: 'home' }">
-          UTM MarketHub
-        </RouterLink>
+      <nav class="navbar navbar-expand-xl container-xl py-3">
+        <RouterLink class="navbar-brand" :to="{ name: 'home' }">UTM MarketHub</RouterLink>
 
-        <form class="app-search d-none d-lg-flex align-items-center flex-grow-1" @submit.prevent="handleSearch">
-          <span class="app-search-icon" aria-hidden="true">⌕</span>
-          <input
-            v-model="searchQuery"
-            class="app-search-input"
-            type="text"
-            placeholder="Search textbooks, gadgets, dorm essentials"
-          />
-          <button class="app-search-button" type="submit">
-            Search
-          </button>
-        </form>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#marketNavigation"
+          aria-controls="marketNavigation"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon" />
+        </button>
 
-        <div class="app-links d-none d-md-flex align-items-center">
-          <RouterLink class="app-link" :to="{ name: 'home', hash: '#recently-added' }">
-            Browse
-          </RouterLink>
-          <RouterLink class="app-link" :to="{ name: 'home', hash: '#market-categories' }">
-            Categories
-          </RouterLink>
-          <RouterLink class="app-link" :to="{ name: 'home', hash: '#why-markethub' }">
-            Why UTM MarketHub
-          </RouterLink>
-          <RouterLink v-if="isAdmin" class="app-link" :to="{ name: 'admin-categories' }">
-            Admin Categories
-          </RouterLink>
-        </div>
+        <div id="marketNavigation" class="collapse navbar-collapse gap-xl-4">
+          <form class="app-search order-xl-1" role="search" @submit.prevent="search">
+            <span aria-hidden="true">⌕</span>
+            <input
+              v-model="searchQuery"
+              type="search"
+              aria-label="Search marketplace"
+              placeholder="Search for items..."
+            />
+            <button type="submit">Search</button>
+          </form>
 
-        <div class="d-flex flex-wrap align-items-center gap-2 ms-md-auto">
-          <template v-if="isAuthenticated">
-            <span class="app-user-pill">
-              {{ authStore.user?.name }} · {{ authStore.user?.role }}
-            </span>
-            <RouterLink class="btn btn-outline-light app-outline-button btn-sm" :to="{ name: 'account' }">
-              Account
-            </RouterLink>
-            <RouterLink
-              v-if="isAdmin"
-              class="btn btn-outline-light app-outline-button btn-sm"
-              :to="{ name: 'admin-categories' }"
-            >
-              Categories
-            </RouterLink>
-            <button class="btn app-primary-button btn-sm" type="button" @click="handleLogout">
-              Logout
-            </button>
-          </template>
-          <template v-else>
-            <RouterLink class="btn btn-link app-text-button btn-sm" :to="{ name: 'login' }">
-              Login
-            </RouterLink>
-            <RouterLink class="btn app-primary-button btn-sm" :to="primaryActionRoute">
-              Register
-            </RouterLink>
-          </template>
+          <ul class="navbar-nav align-items-xl-center gap-xl-2 order-xl-0">
+            <li class="nav-item">
+              <RouterLink class="nav-link" :to="{ name: 'market' }">Browse</RouterLink>
+            </li>
+            <li v-if="isAuthenticated" class="nav-item">
+              <RouterLink class="nav-link" :to="{ name: 'my-listings' }">My listings</RouterLink>
+            </li>
+            <li v-if="isAuthenticated" class="nav-item">
+              <RouterLink class="nav-link" :to="{ name: 'listing-create' }">Sell</RouterLink>
+            </li>
+            <li v-if="isAdmin" class="nav-item">
+              <RouterLink class="nav-link" :to="{ name: 'admin-categories' }">
+                Categories
+              </RouterLink>
+            </li>
+          </ul>
+
+          <div class="account-actions order-xl-2 ms-xl-auto">
+            <template v-if="isAuthenticated">
+              <RouterLink class="user-link" :to="{ name: 'account' }">
+                {{ authStore.user?.name }}
+              </RouterLink>
+              <button class="btn btn-outline-primary btn-sm" type="button" @click="logout">
+                Logout
+              </button>
+            </template>
+            <template v-else>
+              <RouterLink class="btn btn-link btn-sm" :to="{ name: 'login' }">Login</RouterLink>
+              <RouterLink class="btn btn-primary btn-sm" :to="{ name: 'register' }">
+                Register
+              </RouterLink>
+            </template>
+          </div>
         </div>
       </nav>
     </header>
 
-    <router-view />
+    <RouterView />
   </div>
 </template>
 
 <style scoped>
 .app-shell {
-  background:
-    radial-gradient(circle at top left, rgba(35, 107, 246, 0.18), transparent 28%),
-    radial-gradient(circle at top right, rgba(255, 158, 27, 0.14), transparent 24%),
-    #f4f8ff;
-  color: #0f2744;
+  min-height: 100vh;
+  background: var(--market-surface);
 }
 
 .app-header {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 100;
+  border-bottom: 1px solid rgba(194, 198, 216, 0.75);
+  background: rgba(248, 249, 255, 0.94);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
   backdrop-filter: blur(18px);
-  background: rgba(248, 251, 255, 0.84);
-  border-bottom: 1px solid rgba(113, 132, 168, 0.18);
 }
 
-.app-brand {
-  color: #0d5bd7;
-  font-size: 1.35rem;
+.navbar-brand {
+  color: var(--market-primary);
+  font-size: 1.25rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
-  text-decoration: none;
+  letter-spacing: -0.025em;
+}
+
+.navbar-brand:hover {
+  color: var(--market-primary-dark);
+}
+
+.navbar-collapse {
+  min-width: 0;
 }
 
 .app-search {
-  min-width: 18rem;
-  max-width: 30rem;
-  gap: 0.75rem;
-  padding: 0.7rem 0.95rem;
-  border: 1px solid rgba(123, 143, 178, 0.25);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 14px 40px rgba(10, 37, 64, 0.08);
+  display: flex;
+  flex: 1 1 22rem;
+  align-items: center;
+  max-width: 31rem;
+  gap: 0.6rem;
+  padding: 0.45rem 0.5rem 0.45rem 0.8rem;
+  border: 1px solid var(--market-outline);
+  border-radius: 0.7rem;
+  background: var(--market-surface-low);
 }
 
-.app-search-icon {
-  color: #6b7d96;
-  font-size: 0.95rem;
+.app-search:focus-within {
+  border-color: var(--market-primary);
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.1);
 }
 
-.app-search-input {
-  width: 100%;
+.app-search input {
+  min-width: 0;
+  flex: 1;
   border: 0;
+  outline: 0;
   background: transparent;
-  color: #18314d;
-  outline: none;
+  color: var(--market-text);
 }
 
-.app-search-input::placeholder {
-  color: #7787a1;
-}
-
-.app-search-button {
+.app-search button {
   border: 0;
-  border-radius: 999px;
-  padding: 0.45rem 0.9rem;
-  background: #0d5bd7;
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.app-links {
-  gap: 1.25rem;
-}
-
-.app-link {
-  color: #47617f;
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-.app-link:hover,
-.app-link.router-link-active {
-  color: #0d5bd7;
-}
-
-.app-user-pill {
+  border-radius: 0.5rem;
   padding: 0.45rem 0.8rem;
-  border-radius: 999px;
-  background: rgba(13, 91, 215, 0.1);
-  color: #36516f;
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.app-primary-button {
-  border: 0;
-  border-radius: 999px;
-  padding-inline: 1rem;
-  background: linear-gradient(135deg, #0d5bd7, #2f83ff);
+  background: var(--market-primary);
   color: #fff;
-  font-weight: 700;
-  box-shadow: 0 14px 30px rgba(13, 91, 215, 0.22);
+  font-size: 0.75rem;
+  font-weight: 750;
 }
 
-.app-outline-button {
-  border-radius: 999px;
-  border-color: rgba(13, 91, 215, 0.4);
-  color: #0d5bd7;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.92);
+.nav-link {
+  color: var(--market-muted);
+  font-size: 0.9rem;
+  font-weight: 650;
 }
 
-.app-outline-button:hover {
-  color: #0d5bd7;
-  border-color: #0d5bd7;
-  background: rgba(255, 255, 255, 1);
+.nav-link:hover,
+.nav-link.router-link-active {
+  color: var(--market-primary);
 }
 
-.app-text-button {
-  color: #0d5bd7;
+.account-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.user-link {
+  max-width: 10rem;
+  overflow: hidden;
+  color: var(--market-text);
+  font-size: 0.82rem;
   font-weight: 700;
   text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.app-text-button:hover {
-  color: #0846a8;
-}
+@media (max-width: 1199.98px) {
+  .navbar-collapse {
+    padding-top: 1rem;
+  }
 
-@media (max-width: 991.98px) {
-  .app-brand {
-    width: 100%;
+  .app-search {
+    max-width: none;
+    margin-bottom: 1rem;
+  }
+
+  .account-actions {
+    margin-top: 1rem;
   }
 }
 </style>
